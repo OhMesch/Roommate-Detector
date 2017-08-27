@@ -2,15 +2,29 @@
 import telnetlib
 import time
 import datetime
+import os
 
 #Actual class file
 import roomate
 
 #Top secret variables and names ;)
 import connectionInfo
+#Devices is a dictionary of mac addresses (string) correlating to device names(strings)
+#macX is the mac address of roomate X's phone (string)
 from association import devices,macD,macM,macB,macG,macA
 
 def main():
+	#Change this to stop visualization
+	VISUALIZE = True
+
+	dataFolder = os.path.join(os.getcwd(),"Data")
+	if not os.path.exists(dataFolder):
+		os.makedirs(dataFolder)
+		os.makedirs(os.path.join(dataFolder,'Logs'))
+		os.makedirs(os.path.join(dataFolder,'Charts'))
+
+	logFolder = os.path.join(dataFolder,'Logs')
+	chartFolder = os.path.join(dataFolder,'Charts')
 
 	rm1 = roomate.Roomates(macD)
 	rm2 = roomate.Roomates(macM)
@@ -59,7 +73,8 @@ def main():
 
 	#Check if today's log file exists
 	try:
-		file = open(today+'-logs.txt','r')
+		file = open(os.path.join(logFolder,today+'-logs.txt'),'r')
+
 		lines = file.readlines()
 		file.close()
 		
@@ -74,11 +89,40 @@ def main():
 		print('Creating new file')
 		prev = False
 
-	#Create today's log file
-	file = open(today+'-logs.txt','a')
+#Create a visualization chart
+#----------------------------------------------------------------------------------------------------
+	if VISUALIZE:
+		try:
+			vis = open(os.path.join(chartFolder,today+'-chart.txt'),'r')
+			vis.close()
+			vis = open(os.path.join(chartFolder,today+'-chart.txt'),'a')
 
+		except FileNotFoundError:
+			vis = open(os.path.join(chartFolder,today+'-chart.txt'),'a')
+			vis.write(' Time | Davi | Matt | Brnt | Gabe | Andy |\n')
+			vis.write('------------------------------------------\n')
+
+#----------------------------------------------------------------------------------------------------
+
+	#Create today's log file
+	file = open(os.path.join(logFolder,today+'-logs.txt'),'a')
 	#If connected to router
 	if not connectionError:
+
+#----------------------------------------------------------------------------------------------------
+		#Fill out visualization chart
+		if VISUALIZE:
+			vis.write(currTime[:-3]+' ')
+			if prev:
+				for friendo in roomies:
+					friendo.update(prevStatus,macAdr,currTime)
+					if friendo.is_here():
+						vis.write('|      ')
+					else:
+						vis.write('|XXXXXX')
+				vis.write('|\n')
+
+#----------------------------------------------------------------------------------------------------			
 
 		#If previous status data exists
 		if prev:
@@ -86,11 +130,12 @@ def main():
 				friend.update(prevStatus,macAdr,currTime)
 				if friend.is_here():
 					print(devices[friend.get_mac()],'is here')
+
 					if friend.just_arrived():
 						print(devices[friend.get_mac()],'just got home')
+
 				else:
 					print(devices[friend.get_mac()],'is away')
-					# print(devices[friend.get_mac()],'last seen:'+friend.last_seen())
 					if friend.just_left():
 						print(devices[friend.get_mac()],'just left')
 
@@ -108,6 +153,7 @@ def main():
 	#Update log file with no connection error
 	else: 
 		file.write(currTime+',!Server could not be reached\n')
+	vis.close()
 	file.close()
 
 #Tester until cron file
